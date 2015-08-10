@@ -2,6 +2,10 @@
 # Sun Feb  9 00:11:26 CET 2014 aramosf@unsec.net
 # filmaffinity rating order for glftpd.
 # spanish films
+#  
+# Tue Aug 11 01:26:33 CEST 2015
+# + .fa  archive
+# + cleanup script
 
 glroot="/home/glftpd"
 gllog="/home/glftpd/ftp-data/logs/filmaffinity.log"
@@ -9,6 +13,8 @@ rmv="NUKED VEXTEND EXTENDIDA EXTEND 3D SBS BLURAY DUAL 1080p SPANISH BDRIP MHD A
 FMSORTED="/home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-Score"
 SCANDIRS=(${glroot}/site/MOVIES-3DHD-SP/ ${glroot}/site/MOVIES-HD-SP/ ${glroot}/site/MOVIES-RIP-SP/)
 cut=13 # (number of characters of string /home/glftpd/)
+NFOFILE=".fa"
+NFOMSG='echo -e "FilmAffinity\n${n}"|figlet -c -f small && echo -e "\n\n\t\t${u}\n\n"'
 
 function unrls {
  y=""; g=""; x=""; w="";
@@ -50,6 +56,8 @@ for sect in ${SCANDIRS[*]}; do
    echo "rls: $rls" |tee -a $gllog
    if [ -h $FMSORTED/?/?,?-$rls ]; then
      echo "link exists: $(ls $FMSORTED/?/?,?-$rls)" |tee -a $gllog
+     n=$(ls $FMSORTED/?/?,?-$rls | sed -e 's|.*\([0-9],[0-9]\)-.*|\1|')
+	 test ! -z $NFOFILE && eval ${NFOMSG} > ${sect}${rls}/$NFOFILE
      continue
    fi
    unrls $rls
@@ -65,12 +73,22 @@ for sect in ${SCANDIRS[*]}; do
     n="error"
     test ! -d $FMSORTED/Error && mkdir -m777 -p  $FMSORTED/Error
     ln -s $(echo ${sect}${rls}| cut -c$cut-) $FMSORTED/Error/ERROR-$rls 2>/dev/null
+    mkdir $(echo ${sect}${rls})/\[FA\]=-_Score_${n}_-=\[FA\]
     continue
    fi
    may=$(echo $n|cut -d, -f1)
    if [[ $n == *[0-9],[0-9]* ]]; then
      test ! -d $FMSORTED/$may && mkdir -m777 -p $FMSORTED/$may
      ln -s $(echo ${sect}${rls}| cut -c$cut-) $FMSORTED/$may/$n-$rls 2>/dev/null
+     mkdir $(echo ${sect}${rls})/\[FA\]=-_Score_${n}_-=\[FA\]
+	 test ! -z $NFOFILE && eval ${NFOMSG} > ${sect}${rls}/$NFOFILE
+   else
+    echo "--- ERROR FILM WITHOUT FILMAFFINITY SCORE: $rls $u" |tee -a $gllog
+    n="novotes"
+    test ! -d $FMSORTED/Error && mkdir -m777 -p  $FMSORTED/Error
+    ln -s $(echo ${sect}${rls}| cut -c$cut-) $FMSORTED/Error/ERROR-$rls 2>/dev/null
+    mkdir $(echo ${sect}${rls})/\[FA\]=-_Score_${n}_-=\[FA\]
+ 
    fi
  done
 done
