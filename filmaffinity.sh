@@ -57,7 +57,7 @@ for sect in ${SCANDIRS[*]}; do
    if [ -h $FMSORTED/?/?,?-$rls ]; then
      echo "link exists: $(ls $FMSORTED/?/?,?-$rls)" |tee -a $gllog
      n=$(ls $FMSORTED/?/?,?-$rls | sed -e 's|.*\([0-9],[0-9]\)-.*|\1|')
-	 test ! -z $NFOFILE && eval ${NFOMSG} > ${sect}${rls}/$NFOFILE
+     test ! -z $NFOFILE && eval ${NFOMSG} > ${sect}${rls}/$NFOFILE
      continue
    fi
    unrls $rls
@@ -81,7 +81,7 @@ for sect in ${SCANDIRS[*]}; do
      test ! -d $FMSORTED/$may && mkdir -m777 -p $FMSORTED/$may
      ln -s $(echo ${sect}${rls}| cut -c$cut-) $FMSORTED/$may/$n-$rls 2>/dev/null
      mkdir $(echo ${sect}${rls})/\[FA\]=-_Score_${n}_-=\[FA\]
-	 test ! -z $NFOFILE && eval ${NFOMSG} > ${sect}${rls}/$NFOFILE
+     test ! -z $NFOFILE && eval ${NFOMSG} > ${sect}${rls}/$NFOFILE
    else
     echo "--- ERROR FILM WITHOUT FILMAFFINITY SCORE: $rls $u" |tee -a $gllog
     n="novotes"
