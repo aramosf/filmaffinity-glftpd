@@ -1,17 +1,33 @@
 #!/bin/bash
-# FilmAffinity Clean script
+# Sun Feb  9 00:11:26 CET 2014 aramosf@unsec.net
+# filmaffinity rating order for glftpd.
+# spanish films
 
 glroot="/home/glftpd"
 gllog="/home/glftpd/ftp-data/logs/filmaffinity.log"
-FMSORTED="/home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-Score"
+rmv="NUKED VEXTEND EXTENDIDA EXTEND 3D SBS BLURAY DUAL 1080p SPANISH BDRIP MHD AC3 XVID DVDRip x264 READNFO iNTERNAL"
+FMSORTEDSCORE="/home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-Score"
+FMSORTEDGENRE="/home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-Genre"
 SCANDIRS=(${glroot}/site/MOVIES-3DHD-SP/ ${glroot}/site/MOVIES-HD-SP/ ${glroot}/site/MOVIES-RIP-SP/)
+cut=13 # (number of characters of string /home/glftpd/)
 NFOFILE=".fa"
+NFOMSG='echo -e "FilmAffinity\n${n}"|figlet -c -f small'
 
-for lnk in `find /home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-Score/ -type l`; do
+OLDIFS=$IFS IFS=$'\n'
+
+for lnk in `find $FMSORTEDSCORE -type l`; do
   l=$(readlink -m $lnk)
   if [ ! -d $glroot/$l ]; then
-    echo "delete link: $l" | tee -a $gllog
+    echo "delete link from score: $l" | tee -a $gllog
     rm $lnk
+ fi
+done
+
+for lnk in `find $FMSORTEDGENRE -type l`; do
+  l=$(readlink -m $lnk)
+  if [ ! -d $glroot/$l ]; then
+    echo "delete link from genre: $l" | tee -a $gllog
+    rm "$lnk"
  fi
 done
 
@@ -27,7 +43,13 @@ for sect in ${SCANDIRS[*]}; do
    rmdir "$novotes"
  done
 
+# for dir in $(find $sect -maxdepth 2 -type d -iname '*_Score_*'); do
+#   echo "delete fadir: $dir" |tee -a $gllog
+#   rmdir "$dir"
+# done
+
 done
 
 echo "deleteing $FMSORTED/Error folder" | tee -a $gllog
-rm -rf $FMSORTED/Error
+rm -rf "$FMSORTEDSCORE/Error"
+IFS=$OLDIFS
