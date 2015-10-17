@@ -6,13 +6,16 @@
 # Tue Aug 11 01:26:33 CEST 2015
 # + .fa  archive
 # + cleanup script
+# Sun Oct 18 00:41:42 CEST 2015
+# + director sort
 
 glroot="/home/glftpd"
 gllog="/home/glftpd/ftp-data/logs/filmaffinity.log"
-rmv="NUKED VEXTEND EXTENDIDA EXTEND 3D SBS BLURAY DUAL 1080p SPANISH BDRIP MHD AC3 XVID DVDRip x264 READNFO iNTERNAL"
+rmv="NUKED VEXTEND EXTENDIDA EXTEND 3D SBS BLURAY DUAL 1080p SPANISH BDRIP MHD AC3 XVID DVDRip x264 READNFO iNTERNAL MHD Multi REPACK"
 FMSORTEDSCORE="/home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-Score"
 FMSORTEDGENRE="/home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-Genre"
 FMSORTEDSUBGENRE="/home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-SubGenre"
+FMSORTEDDIRECTOR="/home/glftpd/site/MOVIES_SORTED/Sorted.By.FA-Director"
 SCANDIRS=(${glroot}/site/MOVIES-3DHD-SP/ ${glroot}/site/MOVIES-HD-SP/ ${glroot}/site/MOVIES-RIP-SP/)
 cut=13 # (number of characters of string /home/glftpd/)
 NFOFILE=".fa"
@@ -22,6 +25,7 @@ NFOMSG='echo -e "FilmAffinity\n${n}"|figlet -c -f small && echo -e "\n\n\t\t${u}
 test ! -d $FMSORTEDSCORE && mkdir -m777 -p "$FMSORTEDSCORE"
 test ! -d $FMSORTEDGENRE && mkdir -m777 -p "$FMSORTEDGENRE"
 test ! -d $FMSORTEDSUBGENRE && mkdir -m777 -p "$FMSORTEDSUBGENRE"
+test ! -d $FMSORTEDDIRECTOR && mkdir -m777 -p "$FMSORTEDDIRECTOR"
 
 function unrls {
  y=""; g=""; x=""; w="";
@@ -50,6 +54,7 @@ function nota {
  echo "**** NOTA: $w -> $n"|tee -a $gllog
 }
 
+
 function genre {
  genre=$(echo "$html" | sed -e 's#</a>#\n#g' | grep moviegenre | sed -e 's#.*nodoc">##g'| \
    tr '\n' ':'| sed -e 's|:$||')
@@ -59,13 +64,19 @@ function genre {
  echo "**** SUBGENRE: $subgenre  -> $w" | tee -a $gllog
 }
 
+function director {
+ director=$(echo "$html" | grep -A3 "itemprop=\"director\""| sed -e "s|.*name\">\(.*\)</span></a>.*|\1|g"|\
+   grep -v '<' |tr '\n' ':'| sed -e 's|:$||' | sed -e 's|: ||g')  # si son varios directores, hay espacios
+ echo "**** Director: $director -> $w"|tee -a $gllog
+}
+
 function geturl {
    sleep 2
    echo -n "DuckDuckGo URL: " | tee -a $gllog
    url=$(curl --interface eth0:0 --connect-timeout 2 -s --get --data-urlencode \
    	    "q=$w filmaffinity" -s -L 'http://duckduckgo.com/html/'| \
 		grep -i href=\"http://www.filmaffinity.com/e./film| head -1|sed -e 's#.*href="\(.*\)">#\1#')
-   echo curl -s --get --data-urlencode "q=$w filmaffinity" -s -L 'http://duckduckgo.com/html/' debug
+   #echo curl -s --get --data-urlencode "q=$w filmaffinity" -s -L 'http://duckduckgo.com/html/' debug
    echo $url
    if [ -z $url ]; then
    	echo -n "Google URL: " | tee -a $gllog
@@ -90,9 +101,14 @@ for sect in ${SCANDIRS[*]}; do
  echo "STARTING SECTION $sect"
  for rls in $(find $sect -maxdepth 1 -type d | sed -e "s|${sect}||" |sort|uniq); do
    echo "rls: $rls" |tee -a $gllog
+   if [ $( ls $FMSORTEDSCORE/?/?,?-$rls | wc -l ) -gt 1 ]; then # Hay veces que hay dos links con dos notas
+		 echo "deleting duplicate rating $rls" | tee -a $gllog
+		 #ls -l $FMSORTEDSCORE/?/?,?-$rls
+		 rm $FMSORTEDSCORE/?/?,?-$rls
+   fi
    if [ -h $FMSORTEDSCORE/?/?,?-$rls ]; then
      echo "link exists: $(ls $FMSORTEDSCORE/?/?,?-$rls)" |tee -a $gllog
-     continue
+     if [ -z $1 ]; then continue; fi
    fi
    unrls $rls
    geturl
@@ -101,6 +117,7 @@ for sect in ${SCANDIRS[*]}; do
    if [[ $u == *filmaffinity.com* ]]; then
     nota $w
 	genre
+	director
    else
     echo "--- ERROR NOT FILMAFFINITY LINK: $rls $u" |tee -a $gllog
     n="error"
@@ -166,6 +183,29 @@ for sect in ${SCANDIRS[*]}; do
     echo "--- ERROR FILM WITHOUT FILMAFFINITY SUBGENRE: $rls $u" |tee -a $gllog
    fi
 
+   # Director
+   if [ ! -z "$director" ]; then
+     OLDIFS=$IFS IFS=$':'
+	 ok=1
+	 for d in $director; do
+	    d=$(echo $d|sed 's#/#_#g') # Hay veces que meten una /
+	    if [[ ! "$d" == *['!'\"@\#\$%^\&*{}+\^.\<\>]* ]]; then 
+     	  test ! -d $FMSORTEDDIRECTOR/$d && mkdir -m777 -p "$FMSORTEDDIRECTOR/$d"
+  	      ln -s $(echo ${sect}${rls}| cut -c$cut-) "$FMSORTEDDIRECTOR/$d/$rls" 2>/dev/null
+		  #echo ln -s $(echo ${sect}${rls}| cut -c$cut-) $FMSORTEDGENRE/$g/$rls # debug
+		else
+		  echo "director $d string error"
+		fi
+	 done
+	 IFS=$OLDIFS
+   else
+    d="-1"
+    echo "--- ERROR FILM WITHOUT FILMAFFINITY DIRECTOR: $rls $u" |tee -a $gllog
+	test ! -d $FMSORTEDDIRECTOR/Error && mkdir -m777 -p  "$FMSORTEDDIRECTOR/Error"
+    ln -s $(echo ${sect}${rls}| cut -c$cut-) "$FMSORTEDDIRECTOR/Error/ERROR-$rls" 2>/dev/null
+
+   fi
+
 
 
 
@@ -173,7 +213,7 @@ for sect in ${SCANDIRS[*]}; do
    # Se crea NFO y Directorio dentro de la release con nota/generos
    if [ $ok -eq 1 ]; then
      gen=$( echo $genre |cut -d: -f1)
-     echo mkdir "$(echo ${sect}${rls})/[FA]=-_Score_${n}_Genre_${gen}-=[FA]" #debug
+     #echo mkdir "$(echo ${sect}${rls})/[FA]=-_Score_${n}_Genre_${gen}-=[FA]" #debug
      mkdir "$(echo ${sect}${rls})/[FA]=-_Score_${n}_Genre_${gen}-=[FA]" 2>/dev/null
      test ! -z $NFOFILE && eval ${NFOMSG} > ${sect}${rls}/$NFOFILE
      ok=0
