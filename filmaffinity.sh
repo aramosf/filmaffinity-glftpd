@@ -2,7 +2,10 @@
 # Sun Feb  9 00:11:26 CET 2014 aramosf@unsec.net
 # filmaffinity rating order for glftpd.
 # spanish films
-#  
+#
+# Wed 14 Dec 23:01:01 CET 2016
+# + fixed duckduckgo search
+#
 # Tue Aug 11 01:26:33 CEST 2015
 # + .fa  archive
 # + cleanup script
@@ -75,9 +78,19 @@ function geturl {
    echo -n "DuckDuckGo URL: " | tee -a $gllog
    url=$(curl --interface eth0:0 --connect-timeout 2 -s --get --data-urlencode \
    	    "q=$w filmaffinity" -s -L 'http://duckduckgo.com/html/'| \
-		grep -i href=\"http://www.filmaffinity.com/e./film| head -1|sed -e 's#.*href="\(.*\)">#\1#')
+		grep -i href=\"http://www.filmaffinity.com/e./film| head -1|sed -e 's#.*href="\(.*html\)">.*#\1#')
    #echo curl -s --get --data-urlencode "q=$w filmaffinity" -s -L 'http://duckduckgo.com/html/' debug
    echo $url
+   #
+   if [ -z $url ]; then
+   echo "Second try.. wait 5 seconds"; sleep 5
+   echo -n "DuckDuckGo(2) URL: " | tee -a $gllog
+   url=$(curl --connect-timeout 10 --get --data-urlencode \
+   	    "q=$w filmaffinity" -s -L 'https://duckduckgo.com/html/'| \
+		egrep -i href=\"http.?://www.filmaffinity.com/e./film| head -1|sed -e 's#.*href="\(.*html\)">.*#\1#')
+   echo $url
+
+   fi
    if [ -z $url ]; then
    	echo -n "Google URL: " | tee -a $gllog
      url=$(curl -s --get --data-urlencode "q=$w filmaffinity" \
@@ -100,6 +113,7 @@ done
 for sect in ${SCANDIRS[*]}; do
  echo "STARTING SECTION $sect"
  for rls in $(find $sect -maxdepth 1 -type d | sed -e "s|${sect}||" |sort|uniq); do
+   ok=0
    echo "rls: $rls" |tee -a $gllog
    if [ $( ls $FMSORTEDSCORE/?/?,?-$rls | wc -l ) -gt 1 ]; then # Hay veces que hay dos links con dos notas
 		 echo "deleting duplicate rating $rls" | tee -a $gllog
